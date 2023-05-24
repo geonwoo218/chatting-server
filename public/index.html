@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>chatting</title>
+  <link rel="shortcut icon" href="#">
+  <link rel="stylesheet" href="/style.css">
+
+</head>
+
+<body>
+  <script defer>
+    const hostname = window.location.hostname;
+    const socket = new WebSocket(`ws://${hostname}:1010`);
+
+    socket.onopen = () => {
+      console.log(`새로운 클라이언트가 연결됨`);
+    };
+
+    document.addEventListener("DOMContentLoaded", () => {
+      // submit 하면 쓴거 날려버리기
+      let form = document.querySelector("#form");
+      let input = document.querySelector("#message-input");
+      form.onsubmit = (e) => {
+        e.preventDefault(); // 기본 이벤트 제거
+        const message = input.value; // 입력한 메시지 가져오기
+        let data = {
+          act: "send",
+          value: message
+        }
+        data = JSON.stringify(data);
+
+        socket.send(data); // 서버로 메시지 전송
+        input.value = "";
+      };
+
+      // 서버에서 받기
+      socket.addEventListener('message', (event) => {
+        const message = event.data;
+        console.log(`메시지 받음: ${message}`);
+
+        let data = JSON.parse(message);
+
+        // messages 창에 메시지 추가
+        let messages = document.querySelector('.messages');
+        let li = document.createElement('li');
+        li.textContent = data.message;
+        messages.appendChild(li);
+        messages.scrollTop = messages.scrollHeight;
+      });
+
+      socket.addEventListener('close', (event) => {
+        console.log(`소켓이 닫혔습니다. 코드: ${event.code}`);
+      });
+
+      socket.addEventListener("error", (event) => {
+        console.log(`소켓 에러 발생: ${event}`);
+      })
+
+      // WebSocket 연결 시
+      socket.addEventListener('open', () => {
+        console.log('WebSocket 연결이 열림');
+      });
+
+      const createRoomBtn = document.querySelector('#create-room-btn');
+      const RoomForm = document.querySelector('#roomform');
+      const roomNameInput = document.querySelector('#room-name');
+      const roomNameElement = document.querySelector('.roomname');
+
+      RoomForm.addEventListener('submit', (event) => {
+        event.preventDefault(); // 기본 제출 방지
+
+        const channelNameInput = document.getElementById('room-name');
+        const channelName = channelNameInput.value;
+        const roomName = roomNameInput.value;
+
+        socket.send(JSON.stringify({
+          act: "join",
+          value: roomName
+        }));
+
+        roomNameElement.textContent = (`채팅방 이름 : ${roomName}`);
+
+
+        RoomForm.style.display = 'none'; // 이름 설정 폼 숨기기
+        document.querySelector('#room1').style.display = 'block'; // 채팅방 폼 보여주기
+      })
+
+
+    })
+
+  </script>
+
+  <form id="roomform">
+    <input type="text" id="room-name" name="room-name" placeholder="채팅방 이름">
+    <button type="submit" id="create-room-btn">생성</button>
+
+  </form>
+
+  <div class="bg" id="room1" style="display: none;">
+    <div class="gradationborder"></div>
+
+    <div class="roomname"></div>
+    <ul class="messages"></ul>
+
+    <div class="bottom">
+      <form id="form" method="post" action="/posttext">
+        <label for="File" class="plus"><span>+</span></label>
+        <input type="file" id="File" name="파일" class="file-input">
+        <input type="text" id="message-input" autocomplete="off" name="메세지" placeholder="대화를 건네보세요.">
+        <button class="send">↑</button>
+      </form>
+
+    </div>
+
+  </div>
+
+</body>
+
+</html>
